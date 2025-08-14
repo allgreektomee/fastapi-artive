@@ -125,6 +125,7 @@ class ArtworkHistoryCreate(BaseModel):
     youtube_video_id: Optional[str] = None  # 유튜브 비디오 ID
     work_date: Optional[datetime] = None  # 작업 날짜
     images: List[HistoryImageCreate] = []  # 다중 이미지
+    icon_emoji: Optional[str] = "🎨"  # 추가
 
 class ArtworkHistoryUpdate(BaseModel):
     """히스토리 수정 스키마"""
@@ -152,7 +153,8 @@ class ArtworkHistoryResponse(BaseModel):
     work_date: Optional[datetime] = None  # 작업 날짜
     created_at: datetime  # 생성일
     images: List[HistoryImageResponse] = []  # 다중 이미지
-    
+    icon_emoji: Optional[str] = "🎨"  
+      
     class Config:
         from_attributes = True
 

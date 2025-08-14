@@ -64,3 +64,7 @@ class InstagramConnect(BaseModel):
     access_token: str  # Instagram 액세스 토큰
     user_id: str  # Instagram 사용자 ID
     username: str  # Instagram 사용자명
+    
+class SlugCheckRequest(BaseModel):
+    """슬러그 중복 확인 요청 스키마"""
+    slug: str

@@ -4,8 +4,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from models.database import get_db
-from schemas.user import UserCreate, UserLogin, UserResponse
 from services.auth_service import AuthService
+from schemas.user import UserCreate, UserLogin, UserResponse, SlugCheckRequest  # SlugCheckRequest 추가
+
 
 # 라우터 생성
 router = APIRouter()
@@ -170,15 +171,15 @@ async def resend_verification(email: str, db: Session = Depends(get_db)):
     return {"message": "인증 이메일이 재발송되었습니다"}
 
 @router.post("/check-slug")
-async def check_slug_availability(slug: str, db: Session = Depends(get_db)):
+async def check_slug_availability(request: SlugCheckRequest, db: Session = Depends(get_db)):
     """
     슬러그 사용 가능 여부 확인 API
     - 슬러그가 이미 사용중인지 확인합니다
     """
-    existing_user = AuthService.get_user_by_slug(db, slug)
+    existing_user = AuthService.get_user_by_slug(db, request.slug)
     
     return {
-        "slug": slug,
+        "slug": request.slug,
         "available": existing_user is None,
         "message": "사용 가능한 슬러그입니다" if existing_user is None else "이미 사용중인 슬러그입니다"
     }

@@ -102,6 +102,8 @@ class ArtworkHistory(Base):
     work_date = Column(DateTime)  # 실제 작업한 날짜
     imported_at = Column(DateTime)  # 가져온 날짜 (외부 소스용)
     
+    icon_emoji = Column(String(10), default="🎨") 
+    
     # 시스템 정보
     created_at = Column(DateTime, default=func.now())  # 생성일시
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시

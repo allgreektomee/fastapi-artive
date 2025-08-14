@@ -1,4 +1,4 @@
-# models/user.py
+# models/user.py (순환 import 문제 해결)
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -8,64 +8,64 @@ class User(Base):
     __tablename__ = "users"
     
     # 기본 정보
-    id = Column(Integer, primary_key=True, index=True)  # 사용자 고유 ID
-    email = Column(String(255), unique=True, nullable=False, index=True)  # 이메일 (로그인용)
-    password = Column(String(255), nullable=False)  # 암호화된 비밀번호
-    name = Column(String(100), nullable=False)  # 사용자 이름
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password = Column(String(255), nullable=False)
+    name = Column(String(100), nullable=False)
     
     # 프로필 정보
-    thumbnail_url = Column(String(500))  # 프로필 이미지 URL
-    bio = Column(Text)  # 자기소개/아티스트 소개
-    role = Column(String(50), default="artist")  # 사용자 역할 (artist, admin 등)
+    thumbnail_url = Column(String(500))
+    bio = Column(Text)
+    role = Column(String(50), default="artist")
     
     # 갤러리 도메인 설정
-    slug = Column(String(100), unique=True, nullable=False, index=True)  # 사용자 도메인 경로 (artive.com/{slug})
-    custom_domain = Column(String(255), unique=True)  # 커스텀 도메인 ({custom_domain})
+    slug = Column(String(100), unique=True, nullable=False, index=True)
+    custom_domain = Column(String(255), unique=True)
     
     # 갤러리 설정
-    is_public_gallery = Column(Boolean, default=True)  # 갤러리 공개 여부
-    gallery_title = Column(String(200))  # 갤러리 제목 (기본값: name)
-    gallery_description = Column(Text)  # 갤러리 소개글
-    show_work_in_progress = Column(Boolean, default=True)  # 작업중 작품 표시 여부
-    default_artwork_privacy = Column(String(20), default="public")  # 기본 작품 공개 설정 (public/private/unlisted)
+    is_public_gallery = Column(Boolean, default=True)
+    gallery_title = Column(String(200))
+    gallery_description = Column(Text)
+    show_work_in_progress = Column(Boolean, default=True)
+    default_artwork_privacy = Column(String(20), default="public")
     
     # Instagram 연동
-    instagram_user_id = Column(String(100))  # Instagram 사용자 ID
-    instagram_access_token = Column(Text)  # Instagram API 토큰
-    instagram_token_expires = Column(DateTime)  # Instagram 토큰 만료일
-    instagram_username = Column(String(100))  # Instagram 사용자명
+    instagram_user_id = Column(String(100))
+    instagram_access_token = Column(Text)
+    instagram_token_expires = Column(DateTime)
+    instagram_username = Column(String(100))
     
     # 기타 소셜미디어 연동
-    youtube_channel_id = Column(String(100))  # YouTube 채널 ID
-    facebook_page_id = Column(String(100))  # Facebook 페이지 ID
+    youtube_channel_id = Column(String(100))
+    facebook_page_id = Column(String(100))
     
     # 활동 통계
-    total_artworks = Column(Integer, default=0)  # 총 작품 수
-    total_views = Column(Integer, default=0)  # 총 조회수
-    follower_count = Column(Integer, default=0)  # 팔로워 수
+    total_artworks = Column(Integer, default=0)
+    total_views = Column(Integer, default=0)
+    follower_count = Column(Integer, default=0)
     
     # 알림 설정
-    email_notifications = Column(Boolean, default=True)  # 이메일 알림 허용
-    marketing_emails = Column(Boolean, default=False)  # 마케팅 이메일 수신 허용
+    email_notifications = Column(Boolean, default=True)
+    marketing_emails = Column(Boolean, default=False)
     
     # 계정 상태
-    is_verified = Column(Boolean, default=False)  # 이메일 인증 여부
-    is_active = Column(Boolean, default=True)  # 계정 활성화 여부
+    is_verified = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
     
     # 시스템 정보
-    timezone = Column(String(50), default="Asia/Seoul")  # 시간대
-    language = Column(String(10), default="ko")  # 언어 설정
-    created_at = Column(DateTime, default=func.now())  # 가입일시
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
-    last_login = Column(DateTime)  # 마지막 로그인 시간
+    timezone = Column(String(50), default="Asia/Seoul")
+    language = Column(String(10), default="ko")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    last_login = Column(DateTime)
     
-    # 관계 설정
-    artworks = relationship("Artwork", back_populates="user")  # 작품들과의 관계
-    artist_statement = relationship("ArtistStatement", back_populates="user", uselist=False)  # 작가 소개 (1:1)
-    artist_videos = relationship("ArtistVideo", back_populates="user")  # 작가 영상들
-    artist_qa = relationship("ArtistQA", back_populates="user")  # Q&A들
-    exhibitions = relationship("Exhibition", back_populates="user")  # 전시 경력
-    awards = relationship("Award", back_populates="user")  # 수상 경력
+    # === 관계 설정 ===
+    # 작품 관계 (순환 import 방지를 위해 string으로 설정)
+    artworks = relationship("Artwork", back_populates="user")
     
-    # 관계 설정
-    artworks = relationship("Artwork", back_populates="user")  # 작품들과의 관계
+    # 아티스트 정보 관계 (string으로 설정)
+    artist_statement = relationship("ArtistStatement", back_populates="user", uselist=False)
+    artist_videos = relationship("ArtistVideo", back_populates="user")
+    artist_qa = relationship("ArtistQA", back_populates="user")
+    exhibitions = relationship("Exhibition", back_populates="user")
+    awards = relationship("Award", back_populates="user")
