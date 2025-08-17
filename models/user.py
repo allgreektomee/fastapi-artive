@@ -62,6 +62,7 @@ class User(Base):
     # === 관계 설정 ===
     # 작품 관계 (순환 import 방지를 위해 string으로 설정)
     artworks = relationship("Artwork", back_populates="user")
+    blog_posts = relationship("BlogPost", back_populates="user") 
     
     # 아티스트 정보 관계 (string으로 설정)
     artist_statement = relationship("ArtistStatement", back_populates="user", uselist=False)

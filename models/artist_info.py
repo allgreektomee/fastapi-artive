@@ -18,8 +18,8 @@ class ArtistStatement(Base):
     created_at = Column(DateTime, default=func.now())  # 생성일시
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
     
-    # 관계 설정
-    user = relationship("User", back_populates="artist_statement")
+    # 관계 설정 - back_populates 제거
+    user = relationship("User")
 
 class ArtistVideo(Base):
     __tablename__ = "artist_videos"
@@ -52,8 +52,8 @@ class ArtistVideo(Base):
     created_at = Column(DateTime, default=func.now())  # 생성일시
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
     
-    # 관계 설정
-    user = relationship("User", back_populates="artist_videos")
+    # 관계 설정 - back_populates 제거
+    user = relationship("User")
 
 class ArtistQA(Base):
     __tablename__ = "artist_qa"
@@ -77,8 +77,8 @@ class ArtistQA(Base):
     created_at = Column(DateTime, default=func.now())  # 생성일시
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
     
-    # 관계 설정
-    user = relationship("User", back_populates="artist_qa")
+    # 관계 설정 - back_populates 제거
+    user = relationship("User")
 
 class Exhibition(Base):
     __tablename__ = "exhibitions"
@@ -109,8 +109,8 @@ class Exhibition(Base):
     created_at = Column(DateTime, default=func.now())  # 생성일시
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
     
-    # 관계 설정
-    user = relationship("User", back_populates="exhibitions")
+    # 관계 설정 - back_populates 제거
+    user = relationship("User")
 
 class Award(Base):
     __tablename__ = "awards"
@@ -141,5 +141,5 @@ class Award(Base):
     created_at = Column(DateTime, default=func.now())  # 생성일시
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
     
-    # 관계 설정
-    user = relationship("User", back_populates="awards")
+    # 관계 설정 - back_populates 제거
+    user = relationship("User")

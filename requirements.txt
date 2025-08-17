@@ -1,0 +1,44 @@
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+
+# Authentication & Security  
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+
+# Email Validation (schemas/user.py에서 EmailStr 사용)
+email-validator==2.1.0
+pydantic[email]==2.5.2
+
+# AWS S3 (routers/upload.py에서 사용)
+boto3==1.34.11
+botocore==1.34.11
+
+# Environment Variables (.env 파일 사용)
+python-dotenv==1.0.0
+
+# File Upload (FastAPI의 UploadFile 사용)
+python-multipart==0.0.6
+
+# HTTP Client (Optional - API 테스트용)
+httpx==0.25.2
+
+# CORS Support
+starlette==0.27.0
+
+# Date/Time handling
+python-dateutil==2.8.2
+
+# Optional: Database Drivers
+# psycopg2-binary==2.9.9  # PostgreSQL 사용 시
+# pymysql==1.1.0  # MySQL 사용 시
+
+# Development Tools (Optional)
+# pytest==7.4.3
+# pytest-asyncio==0.21.1
+# black==23.11.0
+# flake8==6.1.0

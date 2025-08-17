@@ -18,7 +18,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT 설정
 SECRET_KEY = "your-secret-key-here-change-in-production"  # 운영환경에서는 환경변수로 변경
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 class AuthService:
     """인증 관련 비즈니스 로직을 담당하는 서비스 클래스"""
@@ -42,7 +42,6 @@ class AuthService:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
     
-    @staticmethod
     def verify_token(token: str) -> Optional[dict]:
         """JWT 토큰을 검증하고 페이로드를 반환합니다"""
         try:
@@ -50,11 +49,29 @@ class AuthService:
             if token.startswith("Bearer "):
                 token = token[7:]
             
-            print(f"🔍 정리된 토큰: {token[:50]}...")
-            print(f"🔑 SECRET_KEY: {SECRET_KEY}")
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            print(f"✅ 토큰 검증 성공: {payload}")
+            # 시간대 문제 해결 - UTC 사용
+            payload = jwt.decode(
+                token, 
+                SECRET_KEY, 
+                algorithms=[ALGORITHM],
+                options={"verify_exp": True}  # 만료 검증 활성화
+            )
+            print(f"✅ 토큰 검증 성공")
             return payload
+            
+        except jwt.ExpiredSignatureError:
+            # 만료된 경우에만 디버깅 정보 출력
+            try:
+                decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+                exp_timestamp = decoded.get('exp')
+                if exp_timestamp:
+                    from datetime import timezone
+                    exp_time = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+                    current_time = datetime.now(timezone.utc)
+                    print(f"⏰ 토큰 만료 - 만료시간: {exp_time}, 현재시간: {current_time}")
+            except:
+                pass
+            return None
         except JWTError as e:
             print(f"❌ 토큰 검증 실패: {e}")
             return None
@@ -72,6 +89,15 @@ class AuthService:
     @staticmethod
     def create_user(db: Session, user_create: UserCreate) -> User:
         """새 사용자를 생성합니다"""
+        to_encode = data.copy()
+        current_time = datetime.utcnow()
+        expire = current_time + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+         # 디버깅용 로그
+        print(f"🕐 토큰 생성 - 현재 시간: {current_time}")
+        print(f"🕐 토큰 생성 - 만료 시간: {expire}")
+        print(f"🕐 토큰 유효 시간: {ACCESS_TOKEN_EXPIRE_MINUTES}분")
+        
         # 이메일 중복 체크
         if AuthService.get_user_by_email(db, user_create.email):
             raise HTTPException(

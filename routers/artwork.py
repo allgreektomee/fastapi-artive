@@ -1,5 +1,5 @@
 # routers/artwork.py
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status as http_status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -15,7 +15,7 @@ from routers.auth import get_current_user
 
 router = APIRouter()
 
-@router.post("/", response_model=ArtworkDetailResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ArtworkDetailResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_artwork(
     artwork_data: ArtworkCreate,
     current_user: User = Depends(get_current_user),
@@ -31,7 +31,7 @@ async def create_artwork(
 
 @router.get("/my", response_model=PaginatedArtworksResponse)
 async def get_my_artworks(
-    status: Optional[ArtworkStatusEnum] = Query(None, description="작품 상태 필터"),
+    artwork_status: Optional[ArtworkStatusEnum] = Query(None, description="작품 상태 필터", alias="status"),
     year: Optional[str] = Query(None, description="제작 년도 필터"),
     medium: Optional[str] = Query(None, description="매체 필터"),
     privacy: Optional[ArtworkPrivacyEnum] = Query(None, description="공개 설정 필터"),
@@ -49,7 +49,7 @@ async def get_my_artworks(
     - 필터링, 검색, 정렬, 페이지네이션 지원
     """
     filters = ArtworkFilter(
-        status=status,
+        status=artwork_status,
         year=year,
         medium=medium,
         privacy=privacy,
@@ -92,7 +92,7 @@ async def get_artwork(
     
     if not artwork:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="작품을 찾을 수 없거나 접근 권한이 없습니다"
         )
     
@@ -117,7 +117,7 @@ async def update_artwork(
     artwork = ArtworkService.update_artwork(db, artwork_id, artwork_data, current_user.id)
     return ArtworkDetailResponse.from_orm(artwork)
 
-@router.delete("/{artwork_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{artwork_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_artwork(
     artwork_id: int,
     current_user: User = Depends(get_current_user),
@@ -144,7 +144,7 @@ async def toggle_artwork_like(
     
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="작품을 찾을 수 없습니다"
         )
     
@@ -154,7 +154,7 @@ async def toggle_artwork_like(
 @router.get("/user/{user_slug}", response_model=PaginatedArtworksResponse)
 async def get_user_gallery_artworks(
     user_slug: str,
-    status: Optional[ArtworkStatusEnum] = Query(None, description="작품 상태 필터"),
+    artwork_status: Optional[ArtworkStatusEnum] = Query(None, description="작품 상태 필터", alias="status"),
     year: Optional[str] = Query(None, description="제작 년도 필터"),
     medium: Optional[str] = Query(None, description="매체 필터"),
     search: Optional[str] = Query(None, description="제목/설명 검색"),
@@ -174,18 +174,18 @@ async def get_user_gallery_artworks(
     user = AuthService.get_user_by_slug(db, user_slug)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="사용자를 찾을 수 없습니다"
         )
     
     if not user.is_public_gallery:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="비공개 갤러리입니다"
         )
     
     filters = ArtworkFilter(
-        status=status,
+        status=artwork_status,
         year=year,
         medium=medium,
         search=search,
@@ -211,13 +211,13 @@ async def get_user_gallery_stats(
     user = AuthService.get_user_by_slug(db, user_slug)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="사용자를 찾을 수 없습니다"
         )
     
     if not user.is_public_gallery:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="비공개 갤러리입니다"
         )
     

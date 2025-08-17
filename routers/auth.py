@@ -77,8 +77,6 @@ async def register(user_create: UserCreate, db: Session = Depends(get_db)):
 async def login(user_login: UserLogin, db: Session = Depends(get_db)):
     """
     로그인 API
-    - 이메일과 비밀번호로 인증합니다
-    - JWT 액세스 토큰을 반환합니다
     """
     # 사용자 인증
     user = AuthService.authenticate_user(db, user_login.email, user_login.password)
@@ -113,7 +111,12 @@ async def login(user_login: UserLogin, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": UserResponse.from_orm(user)
+        "user": {  # ✅ UserResponse.from_orm 대신 직접 딕셔너리로
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "slug": user.slug
+        }
     }
 
 @router.get("/verify-email")
