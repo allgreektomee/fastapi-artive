@@ -96,7 +96,7 @@ async def create_blog_post(
     # 태그 처리 (리스트를 JSON 문자열로 변환)
     tags_json = None
     if post.tags:
-        tags_json = json.dumps(post.tags)
+        tags_json = json.dumps(post.tags, ensure_ascii=False)
     
     # 발행 시간 설정
     published_at = None

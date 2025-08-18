@@ -1,7 +1,8 @@
 # schemas/blog.py
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Optional, List
 from datetime import datetime
+import json
 
 class BlogPostBase(BaseModel):
     title: str
@@ -48,7 +49,21 @@ class BlogPostResponse(BlogPostBase):
     updated_at: datetime
     published_at: Optional[datetime] = None
     scheduled_date: Optional[datetime] = None
-    user: Optional[UserBasicInfo] = None  # user 관계 (blog.py와 일치)
+    user: Optional[UserBasicInfo] = None
+    tags: Optional[List[str]] = None
+    
+    @validator('tags', pre=True, always=True)
+    def parse_tags(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                # ensure_ascii=False로 한글 제대로 처리
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else []
+            except:
+                return []
+        return v
     
     class Config:
         from_attributes = True
