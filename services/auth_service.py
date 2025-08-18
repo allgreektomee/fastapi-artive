@@ -89,7 +89,6 @@ class AuthService:
     @staticmethod
     def create_user(db: Session, user_create: UserCreate) -> User:
         """새 사용자를 생성합니다"""
-        to_encode = data.copy()
         current_time = datetime.utcnow()
         expire = current_time + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
