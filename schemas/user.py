@@ -1,15 +1,30 @@
 # schemas/user.py
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr,validator
 from datetime import datetime
-from typing import Optional
+from typing import Optional,Literal
 
 class UserCreate(BaseModel):
-    """사용자 생성 요청 스키마"""
-    email: EmailStr  # 이메일
-    password: str  # 비밀번호
-    name: str  # 이름
-    slug: str  # 도메인 경로
-    bio: Optional[str] = None  # 자기소개
+    email: EmailStr
+    password: str
+    name: str
+    slug: str
+    bio: Optional[str] = None
+    role: Literal["artist", "academy", "gallery"] = "artist"  # role 필드 추가, 기본값 artist
+    
+    @validator('password')
+    def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('비밀번호는 8자 이상이어야 합니다')
+        return v
+    
+    @validator('slug')
+    def validate_slug(cls, v):
+        import re
+        if not re.match(r'^[a-z0-9-]+$', v):
+            raise ValueError('slug는 소문자, 숫자, 하이픈만 사용 가능합니다')
+        if len(v) < 3:
+            raise ValueError('slug는 3자 이상이어야 합니다')
+        return v
     
     
 class UserUpdate(BaseModel):
@@ -62,6 +77,7 @@ class UserResponse(BaseModel):
     email: str  # 이메일
     name: str  # 이름
     slug: str  # 도메인 경로
+    role: str  # role 추가
     custom_domain: Optional[str] = None  # 커스텀 도메인
     thumbnail_url: Optional[str] = None  # 프로필 이미지
     bio: Optional[str] = None  # 자기소개

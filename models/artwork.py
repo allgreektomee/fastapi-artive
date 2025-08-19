@@ -25,6 +25,9 @@ class Artwork(Base):
     title = Column(String(200), nullable=False)  # 작품 제목
     description = Column(Text)  # 작품 설명
     
+    artist_name = Column(String(100))  # 추가!
+
+
     # 이미지 정보
     thumbnail_url = Column(String(500))  # 대표 이미지 URL (완성작)
     work_in_progress_url = Column(String(500))  # 작업중 표시용 이미지 URL

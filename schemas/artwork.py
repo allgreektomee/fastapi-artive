@@ -28,6 +28,7 @@ class ArtworkCreate(BaseModel):
     """작품 생성 스키마"""
     title: str  # 작품 제목
     description: Optional[str] = None  # 작품 설명
+    artist_name: Optional[str] = None  # 추가!
     medium: Optional[str] = None  # 매체
     size: Optional[str] = None  # 크기
     year: Optional[str] = None  # 제작년도
@@ -51,6 +52,17 @@ class ArtworkUpdate(BaseModel):
     completed_at: Optional[datetime] = None  # 완성일 설정
     estimated_completion: Optional[datetime] = None  # 예상 완성일 수정
 
+class ArtistResponse(BaseModel):
+    """아티스트 정보"""
+    id: int
+    name: str
+    slug: str
+    bio: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+        
 class ArtworkCardResponse(BaseModel):
     """갤러리 카드용 작품 정보 (목록용)"""
     id: int  # 작품 ID
@@ -74,6 +86,7 @@ class ArtworkDetailResponse(BaseModel):
     id: int  # 작품 ID
     title: str  # 제목
     description: Optional[str] = None  # 설명
+    artist_name: Optional[str] = None
     thumbnail_url: Optional[str] = None  # 대표 이미지
     work_in_progress_url: Optional[str] = None  # 작업중 이미지
     medium: Optional[str] = None  # 매체
@@ -90,6 +103,9 @@ class ArtworkDetailResponse(BaseModel):
     created_at: datetime  # 생성일
     updated_at: datetime  # 수정일
     user_id: int  # 소유자 ID
+    
+      # 🎯 임시로 Optional 처리
+    artist: Optional[ArtistResponse] = None
     
     class Config:
         from_attributes = True

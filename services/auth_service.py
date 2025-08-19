@@ -120,6 +120,7 @@ class AuthService:
             password=hashed_password,
             name=user_create.name,
             slug=user_create.slug,
+            role=user_create.role,  # role 추가
             bio=user_create.bio,
             gallery_title=user_create.name  # 기본값으로 이름 사용
         )

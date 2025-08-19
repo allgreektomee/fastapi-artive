@@ -1,9 +1,10 @@
 # routers/artwork.py
 from fastapi import APIRouter, Depends, HTTPException, status as http_status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session,joinedload
 from typing import Optional
 
 from models.database import get_db
+from models.artwork import Artwork
 from models.user import User
 from schemas.artwork import (
     ArtworkCreate, ArtworkUpdate, ArtworkCardResponse, ArtworkDetailResponse,
@@ -76,18 +77,13 @@ async def get_my_artwork_stats(
     return ArtworkService.get_user_artwork_stats(db, current_user.id)
 
 @router.get("/{artwork_id}", response_model=ArtworkDetailResponse)
-async def get_artwork(
+async def get_artwork_detail(
     artwork_id: int,
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user),  # Optional!
     db: Session = Depends(get_db)
 ):
-    """
-    작품 상세 정보를 조회합니다
-    - 공개 작품은 누구나 조회 가능
-    - 비공개 작품은 소유자만 조회 가능
-    - 조회수 자동 증가
-    """
-    user_id = current_user.id if current_user else None
+    """작품 상세 정보를 조회합니다"""
+    user_id = current_user.id if current_user else None  # None 허용
     artwork = ArtworkService.get_artwork_by_id(db, artwork_id, user_id)
     
     if not artwork:
@@ -100,7 +96,7 @@ async def get_artwork(
     if not current_user or current_user.id != artwork.user_id:
         ArtworkService.increment_view_count(db, artwork_id)
     
-    return ArtworkDetailResponse.from_orm(artwork)
+    return ArtworkDetailResponse.model_validate(artwork)  
 
 @router.put("/{artwork_id}", response_model=ArtworkDetailResponse)
 async def update_artwork(

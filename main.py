@@ -32,8 +32,8 @@ app.add_middleware(
 create_tables()
 
 # 라우터 등록 (원래 작동하던 방식)
-app.include_router(auth.router, prefix="/auth", tags=["authentication"])
-app.include_router(artwork.router, prefix="/artworks", tags=["artworks"])
+app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+app.include_router(artwork.router, prefix="/api/artworks", tags=["artworks"])
 app.include_router(history.router, prefix="/api/artworks", tags=["history"])
 app.include_router(upload.router, prefix="/api", tags=["upload"])
 app.include_router(profile.router, prefix="/api", tags=["profile"])

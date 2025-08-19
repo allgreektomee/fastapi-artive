@@ -1,6 +1,6 @@
 # services/artwork_service.py
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, asc
 from fastapi import HTTPException, status
 from datetime import datetime
@@ -22,10 +22,13 @@ class ArtworkService:
         """새 작품을 생성합니다"""
         # 표시 순서 계산 (가장 마지막에 추가)
         max_order = db.query(Artwork).filter(Artwork.user_id == user_id).count()
-        
+        # 사용자 정보 가져오기
+        user = db.query(User).filter(User.id == user_id).first()
+    
         artwork = Artwork(
             title=artwork_data.title,
             description=artwork_data.description,
+            artist_name=user.name  if user else "Unknown Artist", 
             medium=artwork_data.medium,
             size=artwork_data.size,
             year=artwork_data.year,
@@ -49,8 +52,11 @@ class ArtworkService:
     
     @staticmethod
     def get_artwork_by_id(db: Session, artwork_id: int, user_id: Optional[int] = None) -> Optional[Artwork]:
-        """ID로 작품을 조회합니다"""
-        query = db.query(Artwork).filter(Artwork.id == artwork_id)
+        """ID로 작품을 조회합니다 (아티스트 정보 포함)"""
+        # User 정보도 함께 로드하도록 수정
+        query = db.query(Artwork).options(
+            joinedload(Artwork.user)  # User 관계 함께 로드
+        ).filter(Artwork.id == artwork_id)
         
         # 소유자가 아닌 경우 공개된 작품만 조회
         if user_id:

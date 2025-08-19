@@ -2,20 +2,34 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from typing import Optional
 
+from datetime import datetime, timedelta
+
+# models import
 from models.database import get_db
+from models.user import User
 from services.auth_service import AuthService
-from schemas.user import UserCreate, UserLogin, UserResponse, SlugCheckRequest  # SlugCheckRequest 추가
+from schemas.user import UserCreate, UserLogin, UserResponse, SlugCheckRequest
 
+# 설정값들 (AuthService에서 가져오거나 환경변수에서)
+SECRET_KEY = "your-secret-key-here"  # 실제로는 환경변수에서 가져와야 함
+ALGORITHM = "HS256"
 
 # 라우터 생성
 router = APIRouter()
 
-# JWT Bearer 토큰 스키마
+# JWT Bearer 토큰 스키마 (토큰 선택적)
+oauth2_scheme = HTTPBearer(auto_error=False)
+
+# 기존 방식 (토큰 필수)
 security = HTTPBearer()
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
-    """현재 로그인한 사용자를 반환하는 의존성 함수"""
+def get_current_user_required(
+    credentials: HTTPAuthorizationCredentials = Depends(security), 
+    db: Session = Depends(get_db)
+) -> User:
+    """현재 로그인한 사용자를 반환하는 의존성 함수 (토큰 필수)"""
     token = credentials.credentials
     payload = AuthService.verify_token(token)
     
@@ -43,6 +57,29 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
     
     return user
+
+def get_current_user(
+    db: Session = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme)
+) -> Optional[User]:
+    """현재 로그인한 사용자 조회 (토큰 선택적)"""
+    if not credentials:
+        return None
+    
+    try:
+        # AuthService 사용
+        payload = AuthService.verify_token(credentials.credentials)
+        if payload is None:
+            return None
+        
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        
+        user = AuthService.get_user_by_email(db, email=email)
+        return user
+    except Exception:
+        return None
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_create: UserCreate, db: Session = Depends(get_db)):
@@ -104,14 +141,13 @@ async def login(user_login: UserLogin, db: Session = Depends(get_db)):
     access_token = AuthService.create_access_token(data={"sub": user.email})
     
     # 마지막 로그인 시간 업데이트
-    from datetime import datetime
     user.last_login = datetime.utcnow()
     db.commit()
     
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {  # ✅ UserResponse.from_orm 대신 직접 딕셔너리로
+        "user": {
             "id": user.id,
             "email": user.email,
             "name": user.name,
@@ -135,14 +171,6 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
         )
     
     return {"message": "이메일 인증이 완료되었습니다"}
-
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user = Depends(get_current_user)):
-    """
-    현재 사용자 정보 조회 API
-    - JWT 토큰으로 현재 로그인한 사용자 정보를 반환합니다
-    """
-    return current_user
 
 @router.post("/resend-verification")
 async def resend_verification(email: str, db: Session = Depends(get_db)):
@@ -186,3 +214,15 @@ async def check_slug_availability(request: SlugCheckRequest, db: Session = Depen
         "available": existing_user is None,
         "message": "사용 가능한 슬러그입니다" if existing_user is None else "이미 사용중인 슬러그입니다"
     }
+    
+# 더 간단한 버전 (통계 없이)
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_user_required)
+):
+    """
+    현재 로그인한 사용자 정보 조회 (간단 버전)
+    - JWT 토큰 필요
+    - 기본 사용자 정보만 반환
+    """
+    return current_user

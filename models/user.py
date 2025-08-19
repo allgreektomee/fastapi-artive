@@ -16,7 +16,7 @@ class User(Base):
     # 프로필 정보
     thumbnail_url = Column(String(500))
     bio = Column(Text)
-    role = Column(String(50), default="artist")
+    role = Column(String, default="artist", nullable=False)
     
     # 갤러리 도메인 설정
     slug = Column(String(100), unique=True, nullable=False, index=True)
