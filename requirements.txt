@@ -5,10 +5,10 @@ uvicorn[standard]==0.24.0
 # Database
 sqlalchemy==2.0.23
 
-# Authentication & Security  
+# Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.1.2
+# bcrypt==4.1.2  # ❌ 이 라인 제거 또는 주석 처리 (passlib[bcrypt]와 충돌)
 
 # Email Validation (schemas/user.py에서 EmailStr 사용)
 email-validator==2.1.0
@@ -32,6 +32,12 @@ starlette==0.27.0
 
 # Date/Time handling
 python-dateutil==2.8.2
+
+# Image Processing
+Pillow==10.1.0
+
+# Email sending
+fastapi-mail==1.4.1
 
 # Optional: Database Drivers
 # psycopg2-binary==2.9.9  # PostgreSQL 사용 시

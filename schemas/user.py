@@ -2,28 +2,28 @@
 from pydantic import BaseModel, EmailStr,validator
 from datetime import datetime
 from typing import Optional,Literal
+import re
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     name: str
     slug: str
     bio: Optional[str] = None
-    role: Literal["artist", "academy", "gallery"] = "artist"  # role 필드 추가, 기본값 artist
-    
-    @validator('password')
-    def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError('비밀번호는 8자 이상이어야 합니다')
-        return v
+    role: Literal["artist", "academy", "gallery"] = "artist"
     
     @validator('slug')
     def validate_slug(cls, v):
-        import re
-        if not re.match(r'^[a-z0-9-]+$', v):
-            raise ValueError('slug는 소문자, 숫자, 하이픈만 사용 가능합니다')
+        if not v:
+            raise ValueError('slug는 필수입니다')
+        
+        # 언더스코어도 허용하도록 수정
+        if not re.match(r'^[a-z0-9_-]+$', v):
+            raise ValueError('slug는 소문자, 숫자, 하이픈(-), 언더스코어(_)만 사용 가능합니다')
+        
         if len(v) < 3:
-            raise ValueError('slug는 3자 이상이어야 합니다')
+            raise ValueError('slug는 최소 3자 이상이어야 합니다')
+        
         return v
     
     

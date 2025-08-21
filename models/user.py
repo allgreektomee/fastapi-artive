@@ -35,6 +35,16 @@ class User(Base):
     instagram_token_expires = Column(DateTime)
     instagram_username = Column(String(100))
     
+    # About 섹션 (범용적)
+    about_text = Column(Text)           # 소개 텍스트
+    about_image = Column(String(500))   # 소개 이미지
+    about_video = Column(String(500))   # 소개 영상
+    
+    # 작업공간 
+    studio_description = Column(Text)
+    studio_image = Column(String(500))
+    process_video = Column(String(500))
+    
     # 기타 소셜미디어 연동
     youtube_channel_id = Column(String(100))
     facebook_page_id = Column(String(100))

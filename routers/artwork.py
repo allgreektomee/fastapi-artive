@@ -119,12 +119,57 @@ async def delete_artwork(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    작품을 삭제합니다
-    - 작품 소유자만 삭제 가능
-    - 연관된 모든 히스토리도 함께 삭제됨
-    """
-    ArtworkService.delete_artwork(db, artwork_id, current_user.id)
+    """작품 삭제"""
+    artwork = db.query(Artwork).filter(
+        Artwork.id == artwork_id,
+        Artwork.user_id == current_user.id
+    ).first()
+    
+    if not artwork:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="작품을 찾을 수 없습니다"
+        )
+    
+    try:
+        # S3 이미지 삭제
+        from routers.upload import delete_s3_file
+        
+        images_to_delete = []
+        if artwork.thumbnail_url:
+            images_to_delete.append(artwork.thumbnail_url)
+        if artwork.work_in_progress_url:
+            images_to_delete.append(artwork.work_in_progress_url)
+        
+        # 히스토리 이미지들도 수집
+        histories = db.query(ArtworkHistory).filter(ArtworkHistory.artwork_id == artwork_id).all()
+        for history in histories:
+            if history.media_url:
+                images_to_delete.append(history.media_url)
+            if history.thumbnail_url:
+                images_to_delete.append(history.thumbnail_url)
+            
+            # 히스토리의 추가 이미지들
+            for img in history.images:
+                if img.image_url:
+                    images_to_delete.append(img.image_url)
+        
+        # S3 파일 삭제 (실패해도 계속 진행)
+        for img_url in images_to_delete:
+            try:
+                delete_s3_file(img_url)
+            except Exception as e:
+                print(f"이미지 삭제 실패 (계속 진행): {img_url} - {e}")
+        
+        # 데이터베이스에서 삭제
+        ArtworkService.delete_artwork(db, artwork_id, current_user.id)
+        
+    except Exception as e:
+        print(f"작품 삭제 중 오류: {e}")
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="작품 삭제 중 오류가 발생했습니다"
+        )
 
 @router.post("/{artwork_id}/like")
 async def toggle_artwork_like(

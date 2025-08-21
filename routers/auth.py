@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
-
+from passlib.context import CryptContext  # 이 줄 추가!
 from datetime import datetime, timedelta
 
 # models import
@@ -11,6 +11,7 @@ from models.database import get_db
 from models.user import User
 from services.auth_service import AuthService
 from schemas.user import UserCreate, UserLogin, UserResponse, SlugCheckRequest
+
 
 # 설정값들 (AuthService에서 가져오거나 환경변수에서)
 SECRET_KEY = "your-secret-key-here"  # 실제로는 환경변수에서 가져와야 함
@@ -24,6 +25,11 @@ oauth2_scheme = HTTPBearer(auto_error=False)
 
 # 기존 방식 (토큰 필수)
 security = HTTPBearer()
+
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 def get_current_user_required(
     credentials: HTTPAuthorizationCredentials = Depends(security), 
@@ -85,20 +91,25 @@ def get_current_user(
 async def register(user_create: UserCreate, db: Session = Depends(get_db)):
     """
     회원가입 API
-    - 새로운 사용자를 생성합니다
-    - 이메일 중복 검사를 수행합니다
-    - 비밀번호를 안전하게 해싱합니다
     """
     try:
         # 사용자 생성
         user = AuthService.create_user(db, user_create)
         
-        # 이메일 인증 토큰 생성 (실제 이메일 발송은 나중에 구현)
+        # 이메일 인증 토큰 생성
         verification_token = AuthService.create_verification_token(db, user.email)
         
-        # TODO: 실제 이메일 발송 로직 추가
-        print(f"🔐 이메일 인증 토큰: {verification_token}")
-        print(f"📧 인증 링크: http://localhost:8000/auth/verify-email?token={verification_token}")
+        # 이메일 발송 추가
+        from services.email_service import EmailService
+        email_sent = await EmailService.send_verification_email(
+            email=user.email,
+            token=verification_token,
+            name=user.name
+        )
+        
+        if not email_sent:
+            print(f"⚠️ 이메일 발송 실패 - 터미널 링크 사용")
+            print(f"📧 인증 링크: http://localhost:8000/api/auth/verify-email?token={verification_token}")
         
         return user
         
@@ -226,3 +237,213 @@ async def get_current_user_info(
     - 기본 사용자 정보만 반환
     """
     return current_user
+
+# 비밀번호 변경
+
+@router.put("/password")
+async def change_password(
+    data: dict,
+    current_user: User = Depends(get_current_user_required),  # 이미 있는 함수 사용
+    db: Session = Depends(get_db)
+):
+    """비밀번호 변경"""
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+    
+    if not current_password or not new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="필수 정보가 누락되었습니다"
+        )
+    
+    # 현재 비밀번호 확인 (AuthService 사용)
+    if not AuthService.verify_password(current_password, current_user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="현재 비밀번호가 일치하지 않습니다"
+        )
+    
+    # 비밀번호 유효성 검사
+    if len(new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="비밀번호는 8자 이상이어야 합니다"
+        )
+    
+    # 새 비밀번호 해시화 및 저장
+    current_user.password = AuthService.hash_password(new_password)
+    db.commit()
+    
+    return {"message": "비밀번호가 변경되었습니다"}
+
+
+# 회원 탈퇴
+
+@router.delete("/account")
+async def delete_account(
+    data: dict,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """회원 탈퇴"""
+    password = data.get("password")
+    
+    if not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="비밀번호를 입력해주세요"
+        )
+    
+    # 비밀번호 확인
+    if not AuthService.verify_password(password, current_user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="비밀번호가 일치하지 않습니다"
+        )
+    
+    # 관련 데이터 먼저 삭제 (순서 중요!)
+    try:
+        # 1. 개별 S3 파일들 정리 (DB 삭제 전에)
+        try:
+            from routers.upload import delete_s3_file
+            from models.artwork import Artwork, ArtworkHistory
+            from models.artist_info import Exhibition, Award
+            
+            # 전시회 이미지들 삭제
+            exhibitions = db.query(Exhibition).filter(Exhibition.user_id == current_user.id).all()
+            for exhibition in exhibitions:
+                if exhibition.image_url:
+                    try:
+                        delete_s3_file(exhibition.image_url)
+                    except Exception as e:
+                        print(f"전시회 이미지 삭제 실패: {e}")
+                if exhibition.video_url and current_user.slug in exhibition.video_url:
+                    try:
+                        delete_s3_file(exhibition.video_url)
+                    except Exception as e:
+                        print(f"전시회 영상 삭제 실패: {e}")
+            
+            # 수상 이미지들 삭제
+            awards = db.query(Award).filter(Award.user_id == current_user.id).all()
+            for award in awards:
+                if award.image_url:
+                    try:
+                        delete_s3_file(award.image_url)
+                    except Exception as e:
+                        print(f"수상 이미지 삭제 실패: {e}")
+                if award.video_url and current_user.slug in award.video_url:
+                    try:
+                        delete_s3_file(award.video_url)
+                    except Exception as e:
+                        print(f"수상 영상 삭제 실패: {e}")
+            
+            # 작품 이미지들 삭제
+            artworks = db.query(Artwork).filter(Artwork.user_id == current_user.id).all()
+            for artwork in artworks:
+                if artwork.thumbnail_url:
+                    try:
+                        delete_s3_file(artwork.thumbnail_url)
+                    except Exception as e:
+                        print(f"작품 썸네일 삭제 실패: {e}")
+                if artwork.work_in_progress_url:
+                    try:
+                        delete_s3_file(artwork.work_in_progress_url)
+                    except Exception as e:
+                        print(f"작품 WIP 이미지 삭제 실패: {e}")
+                
+                # 작품 히스토리 이미지들 삭제
+                histories = db.query(ArtworkHistory).filter(ArtworkHistory.artwork_id == artwork.id).all()
+                for history in histories:
+                    if history.media_url:
+                        try:
+                            delete_s3_file(history.media_url)
+                        except Exception as e:
+                            print(f"히스토리 미디어 삭제 실패: {e}")
+                    if history.thumbnail_url:
+                        try:
+                            delete_s3_file(history.thumbnail_url)
+                        except Exception as e:
+                            print(f"히스토리 썸네일 삭제 실패: {e}")
+                    
+                    # 히스토리 추가 이미지들
+                    for img in history.images:
+                        if img.image_url:
+                            try:
+                                delete_s3_file(img.image_url)
+                            except Exception as e:
+                                print(f"히스토리 이미지 삭제 실패: {e}")
+            
+        except Exception as e:
+            print(f"개별 S3 파일 정리 중 오류 (계속 진행): {e}")
+        
+        # 2. S3 폴더 전체 정리 (추가 보험)
+        try:
+            from routers.upload import cleanup_user_s3_files
+            s3_cleanup_result = cleanup_user_s3_files(current_user.slug)
+            print(f"S3 폴더 정리 결과: {s3_cleanup_result}")
+        except Exception as e:
+            print(f"S3 폴더 정리 중 오류 (계속 진행): {e}")
+        
+        # 3. 데이터베이스 정리
+        from models.artwork import Artwork, ArtworkHistory, ArtworkHistoryImage
+        from models.artist_info import ArtistQA, Exhibition, Award, ArtistVideo, ArtistStatement
+        
+        # 작품 관련 데이터 삭제
+        artwork_ids = db.query(Artwork.id).filter(Artwork.user_id == current_user.id).subquery()
+        history_ids = db.query(ArtworkHistory.id).filter(
+            ArtworkHistory.artwork_id.in_(artwork_ids)
+        ).subquery()
+        
+        # 히스토리 이미지 삭제
+        db.query(ArtworkHistoryImage).filter(
+            ArtworkHistoryImage.history_id.in_(history_ids)
+        ).delete(synchronize_session=False)
+        
+        # 작품 히스토리 삭제
+        db.query(ArtworkHistory).filter(
+            ArtworkHistory.artwork_id.in_(artwork_ids)
+        ).delete(synchronize_session=False)
+        
+        # 작품 삭제
+        db.query(Artwork).filter(Artwork.user_id == current_user.id).delete(synchronize_session=False)
+        
+        # 아티스트 정보 삭제
+        db.query(ArtistQA).filter(ArtistQA.user_id == current_user.id).delete(synchronize_session=False)
+        db.query(Exhibition).filter(Exhibition.user_id == current_user.id).delete(synchronize_session=False)
+        db.query(Award).filter(Award.user_id == current_user.id).delete(synchronize_session=False)
+        db.query(ArtistVideo).filter(ArtistVideo.user_id == current_user.id).delete(synchronize_session=False)
+        db.query(ArtistStatement).filter(ArtistStatement.user_id == current_user.id).delete(synchronize_session=False)
+        
+        # 블로그 포스트 삭제
+        try:
+            from models.blog import BlogPost
+            db.query(BlogPost).filter(BlogPost.user_id == current_user.id).delete(synchronize_session=False)
+        except ImportError:
+            pass
+        
+        # 이메일 인증 토큰 삭제
+        try:
+            from models.email_verification import EmailVerificationToken
+            db.query(EmailVerificationToken).filter(
+                EmailVerificationToken.email == current_user.email
+            ).delete(synchronize_session=False)
+        except ImportError:
+            pass
+        
+        # 사용자 삭제
+        db.delete(current_user)
+        
+        # 모든 변경사항 커밋
+        db.commit()
+        
+        return {"message": "회원 탈퇴가 완료되었습니다"}
+        
+    except Exception as e:
+        db.rollback()
+        print(f"회원 탈퇴 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"회원 탈퇴 처리 중 오류가 발생했습니다: {str(e)}"
+        )

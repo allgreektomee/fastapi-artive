@@ -44,5 +44,57 @@ async def delete_history(
     db: Session = Depends(get_db)
 ):
     """히스토리 삭제"""
-    HistoryService.delete_history(db, history_id, current_user.id)
-    return {"message": "히스토리가 삭제되었습니다"}
+    history = db.query(ArtworkHistory).filter(
+        ArtworkHistory.id == history_id,
+        ArtworkHistory.artwork_id == artwork_id
+    ).first()
+    
+    if not history:
+        raise HTTPException(
+            status_code=404,
+            detail="히스토리를 찾을 수 없습니다"
+        )
+    
+    # 권한 확인
+    artwork = db.query(Artwork).filter(Artwork.id == artwork_id).first()
+    if not artwork or artwork.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="권한이 없습니다"
+        )
+    
+    try:
+        # S3 이미지 삭제
+        from routers.upload import delete_s3_file
+        
+        images_to_delete = []
+        if history.media_url:
+            images_to_delete.append(history.media_url)
+        if history.thumbnail_url:
+            images_to_delete.append(history.thumbnail_url)
+        
+        # 히스토리의 추가 이미지들
+        for img in history.images:
+            if img.image_url:
+                images_to_delete.append(img.image_url)
+        
+        # S3 파일 삭제
+        for img_url in images_to_delete:
+            try:
+                delete_s3_file(img_url)
+            except Exception as e:
+                print(f"히스토리 이미지 삭제 실패: {e}")
+        
+        # 데이터베이스에서 삭제
+        db.delete(history)
+        db.commit()
+        
+        return {"message": "히스토리가 삭제되었습니다"}
+        
+    except Exception as e:
+        db.rollback()
+        print(f"히스토리 삭제 중 오류: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="히스토리 삭제 중 오류가 발생했습니다"
+        )

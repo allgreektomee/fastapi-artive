@@ -20,15 +20,22 @@ class ArtworkService:
     @staticmethod
     def create_artwork(db: Session, artwork_data: ArtworkCreate, user_id: int) -> Artwork:
         """새 작품을 생성합니다"""
-        # 표시 순서 계산 (가장 마지막에 추가)
         max_order = db.query(Artwork).filter(Artwork.user_id == user_id).count()
         # 사용자 정보 가져오기
         user = db.query(User).filter(User.id == user_id).first()
-    
+        
+        # LinkItem 객체를 dict로 변환
+        links_data = []
+        if artwork_data.links:
+            links_data = [
+                {"title": link.title, "url": link.url} 
+                for link in artwork_data.links
+            ]
+        
         artwork = Artwork(
             title=artwork_data.title,
             description=artwork_data.description,
-            artist_name=user.name  if user else "Unknown Artist", 
+            artist_name=user.name if user else "Unknown Artist", 
             medium=artwork_data.medium,
             size=artwork_data.size,
             year=artwork_data.year,
@@ -38,7 +45,12 @@ class ArtworkService:
             started_at=artwork_data.started_at,
             estimated_completion=artwork_data.estimated_completion,
             display_order=max_order,
-            user_id=user_id
+            user_id=user_id,
+            
+            # 수정된 부분 - dict로 변환
+            links=links_data,  # LinkItem 객체 대신 dict 리스트
+            youtube_urls=artwork_data.youtube_urls if artwork_data.youtube_urls else [],
+            description_format=artwork_data.description_format or "markdown"
         )
         
         db.add(artwork)
@@ -81,9 +93,17 @@ class ArtworkService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="작품을 찾을 수 없습니다"
             )
-        
+    
         # 수정 가능한 필드들 업데이트
         update_data = artwork_data.dict(exclude_unset=True)
+        
+        # links 필드 특별 처리
+        if 'links' in update_data and update_data['links'] is not None:
+            update_data['links'] = [
+                {"title": link.get('title', ''), "url": link.get('url', '')} 
+                for link in update_data['links']
+            ]
+        
         for field, value in update_data.items():
             if hasattr(artwork, field):
                 setattr(artwork, field, value)

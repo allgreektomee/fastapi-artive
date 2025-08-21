@@ -1,5 +1,5 @@
 # models/artwork.py
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Enum, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -27,6 +27,10 @@ class Artwork(Base):
     
     artist_name = Column(String(100))  # 추가!
 
+     # 새로 추가할 필드들
+    links = Column(JSON, nullable=True)  # 링크 목록 [{title: "", url: ""}]
+    youtube_urls = Column(JSON, nullable=True)  # 유튜브 URL 목록 ["url1", "url2"]
+    description_format = Column(String(20), default="markdown")  # 텍
 
     # 이미지 정보
     thumbnail_url = Column(String(500))  # 대표 이미지 URL (완성작)

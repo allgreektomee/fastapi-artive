@@ -182,7 +182,6 @@ async def delete_blog_post(
     db: Session = Depends(get_db)
 ):
     """블로그 포스트 삭제"""
-    
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     
     if not post:
@@ -191,7 +190,37 @@ async def delete_blog_post(
     if post.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="권한이 없습니다")
     
-    db.delete(post)
-    db.commit()
-    
-    return {"message": "포스트가 삭제되었습니다"}
+    try:
+        # S3 이미지 삭제
+        from routers.upload import delete_s3_file
+        
+        # 대표 이미지 삭제
+        if post.featured_image:
+            try:
+                delete_s3_file(post.featured_image)
+            except Exception as e:
+                print(f"대표 이미지 삭제 실패: {e}")
+        
+        # 컨텐츠 내 이미지 추출 및 삭제
+        import re
+        content_images = re.findall(r'https?://[^"\s]+\.(?:jpg|jpeg|png|gif|webp)', post.content)
+        for img_url in content_images:
+            if current_user.slug in img_url:  # 사용자의 이미지만 삭제
+                try:
+                    delete_s3_file(img_url)
+                except Exception as e:
+                    print(f"컨텐츠 이미지 삭제 실패: {e}")
+        
+        # 데이터베이스에서 삭제
+        db.delete(post)
+        db.commit()
+        
+        return {"message": "포스트가 삭제되었습니다"}
+        
+    except Exception as e:
+        db.rollback()
+        print(f"블로그 포스트 삭제 중 오류: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="포스트 삭제 중 오류가 발생했습니다"
+        )

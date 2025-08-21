@@ -12,6 +12,9 @@ from models.database import get_db
 from routers.auth import get_current_user_required  # get_current_user 대신 get_current_user_required 임포트
 from models.user import User
 
+import re
+from urllib.parse import urlparse
+
 # .env 파일 로드
 load_dotenv()
 
@@ -434,4 +437,161 @@ async def upload_history_image(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="파일 업로드 중 오류가 발생했습니다"
+        )
+        
+        
+        
+        
+        
+# S3 이미지 삭제 
+def extract_s3_key_from_url(url: str) -> str:
+    """URL에서 S3 키 추출"""
+    try:
+        # CloudFront URL인 경우
+        cdn_domain = os.getenv("CLOUDFRONT_DOMAIN", "")
+        if cdn_domain and cdn_domain in url:
+            return url.split(f"https://{cdn_domain}/")[1]
+        
+        # S3 직접 URL인 경우
+        bucket_name = os.getenv("S3_BUCKET", "artive-uploads")
+        region = os.getenv("AWS_REGION", "ap-southeast-2")
+        s3_pattern = f"https://{bucket_name}.s3.{region}.amazonaws.com/"
+        
+        if s3_pattern in url:
+            return url.split(s3_pattern)[1]
+        
+        # 다른 S3 URL 패턴들
+        parsed = urlparse(url)
+        if parsed.netloc.endswith('.amazonaws.com'):
+            return parsed.path.lstrip('/')
+        
+        return ""
+    except:
+        return ""
+
+def delete_s3_file(file_url: str) -> bool:
+    """S3에서 파일 삭제"""
+    if not file_url:
+        return True
+    
+    try:
+        s3_key = extract_s3_key_from_url(file_url)
+        if not s3_key:
+            print(f"S3 키를 추출할 수 없습니다: {file_url}")
+            return False
+        
+        s3_client.delete_object(
+            Bucket=S3_BUCKET,
+            Key=s3_key
+        )
+        print(f"S3 파일 삭제 성공: {s3_key}")
+        return True
+        
+    except ClientError as e:
+        error_code = e.response['Error']['Code'] if e.response else 'Unknown'
+        if error_code == 'NoSuchKey':
+            print(f"파일이 이미 존재하지 않습니다: {file_url}")
+            return True  # 이미 없는 파일은 성공으로 처리
+        else:
+            print(f"S3 파일 삭제 실패: {error_code} - {file_url}")
+            return False
+    except Exception as e:
+        print(f"파일 삭제 중 오류: {e}")
+        return False
+
+def delete_multiple_s3_files(file_urls: list) -> dict:
+    """여러 S3 파일 일괄 삭제"""
+    results = {"success": [], "failed": []}
+    
+    for url in file_urls:
+        if delete_s3_file(url):
+            results["success"].append(url)
+        else:
+            results["failed"].append(url)
+    
+    return results
+
+def cleanup_user_s3_files(user_slug: str) -> dict:
+    """특정 사용자의 모든 S3 파일 삭제 (회원 탈퇴용)"""
+    try:
+        # 사용자 폴더들
+        prefixes = [
+            f"blog/{user_slug}/",
+            f"artworks/{user_slug}/", 
+            f"history/{user_slug}/"
+        ]
+        
+        deleted_files = []
+        failed_files = []
+        
+        for prefix in prefixes:
+            try:
+                # 폴더 내 모든 객체 조회
+                response = s3_client.list_objects_v2(
+                    Bucket=S3_BUCKET,
+                    Prefix=prefix
+                )
+                
+                if 'Contents' in response:
+                    # 객체들을 일괄 삭제
+                    objects_to_delete = [{'Key': obj['Key']} for obj in response['Contents']]
+                    
+                    if objects_to_delete:
+                        delete_response = s3_client.delete_objects(
+                            Bucket=S3_BUCKET,
+                            Delete={
+                                'Objects': objects_to_delete,
+                                'Quiet': False
+                            }
+                        )
+                        
+                        # 삭제된 파일들 기록
+                        if 'Deleted' in delete_response:
+                            deleted_files.extend([obj['Key'] for obj in delete_response['Deleted']])
+                        
+                        # 실패한 파일들 기록
+                        if 'Errors' in delete_response:
+                            failed_files.extend([obj['Key'] for obj in delete_response['Errors']])
+                            
+            except ClientError as e:
+                print(f"폴더 {prefix} 정리 중 오류: {e}")
+                
+        return {
+            "success": True,
+            "deleted_count": len(deleted_files),
+            "failed_count": len(failed_files),
+            "deleted_files": deleted_files,
+            "failed_files": failed_files
+        }
+        
+    except Exception as e:
+        print(f"사용자 파일 정리 중 오류: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@router.delete("/delete-file")
+async def delete_uploaded_file(
+    file_url: str,
+    current_user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """업로드된 파일 삭제 API"""
+    
+    # 파일 URL이 현재 사용자의 것인지 확인
+    if not file_url or current_user.slug not in file_url:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="해당 파일을 삭제할 권한이 없습니다"
+        )
+    
+    success = delete_s3_file(file_url)
+    
+    if success:
+        return {"message": "파일이 삭제되었습니다", "file_url": file_url}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="파일 삭제 중 오류가 발생했습니다"
         )

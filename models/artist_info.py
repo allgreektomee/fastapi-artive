@@ -79,67 +79,66 @@ class ArtistQA(Base):
     
     # 관계 설정 - back_populates 제거
     user = relationship("User")
-
+    
+    
 class Exhibition(Base):
     __tablename__ = "exhibitions"
     
-    id = Column(Integer, primary_key=True, index=True)  # 고유 ID
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 사용자 ID
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
-    # 전시 정보 (다국어)
-    title_ko = Column(String(200), nullable=False)  # 한글 전시명
-    title_en = Column(String(200), nullable=False)  # 영문 전시명
+    # 기존 필드들
+    title_ko = Column(String(200), nullable=False)
+    title_en = Column(String(200), nullable=False)
+    venue_ko = Column(String(200))
+    venue_en = Column(String(200))
+    year = Column(String(10), nullable=False)
+    exhibition_type = Column(String(50), default="group")
+    description_ko = Column(Text)
+    description_en = Column(Text)
     
-    # 전시 상세 정보
-    venue_ko = Column(String(200))  # 한글 장소명
-    venue_en = Column(String(200))  # 영문 장소명
-    year = Column(String(10), nullable=False)  # 전시 년도
-    exhibition_type = Column(String(50), default="group")  # 전시 타입 (solo, group, fair)
-    
-    # 전시 설명
-    description_ko = Column(Text)  # 한글 설명
-    description_en = Column(Text)  # 영문 설명
+    # 추가 필드
+    image_url = Column(String(500))  # 전시 포스터/사진
+    video_url = Column(String(500))  # 전시 영상 링크
     
     # 표시 설정
-    is_featured = Column(Boolean, default=False)  # 주요 전시 여부
-    is_active = Column(Boolean, default=True)  # 활성화 여부
-    order_index = Column(Integer, default=0)  # 정렬 순서
+    is_featured = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    order_index = Column(Integer, default=0)
     
     # 메타 정보
-    created_at = Column(DateTime, default=func.now())  # 생성일시
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
-    # 관계 설정 - back_populates 제거
     user = relationship("User")
 
 class Award(Base):
     __tablename__ = "awards"
     
-    id = Column(Integer, primary_key=True, index=True)  # 고유 ID
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 사용자 ID
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
-    # 수상 정보 (다국어)
-    title_ko = Column(String(200), nullable=False)  # 한글 수상명
-    title_en = Column(String(200), nullable=False)  # 영문 수상명
+    # 기존 필드들
+    title_ko = Column(String(200), nullable=False)
+    title_en = Column(String(200), nullable=False)
+    organization_ko = Column(String(200))
+    organization_en = Column(String(200))
+    year = Column(String(10), nullable=False)
+    award_type = Column(String(50), default="recognition")
+    description_ko = Column(Text)
+    description_en = Column(Text)
     
-    # 수상 상세 정보
-    organization_ko = Column(String(200))  # 한글 주최기관
-    organization_en = Column(String(200))  # 영문 주최기관
-    year = Column(String(10), nullable=False)  # 수상 년도
-    award_type = Column(String(50), default="recognition")  # 수상 타입 (grand, excellence, recognition)
-    
-    # 수상 설명
-    description_ko = Column(Text)  # 한글 설명
-    description_en = Column(Text)  # 영문 설명
+    # 추가 필드
+    image_url = Column(String(500))  # 수상 증서/사진
+    video_url = Column(String(500))  # 수상 관련 영상
     
     # 표시 설정
-    is_featured = Column(Boolean, default=False)  # 주요 수상 여부
-    is_active = Column(Boolean, default=True)  # 활성화 여부
-    order_index = Column(Integer, default=0)  # 정렬 순서
+    is_featured = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    order_index = Column(Integer, default=0)
     
     # 메타 정보
-    created_at = Column(DateTime, default=func.now())  # 생성일시
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정일시
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
-    # 관계 설정 - back_populates 제거
     user = relationship("User")

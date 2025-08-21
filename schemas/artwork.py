@@ -22,6 +22,12 @@ class HistoryTypeEnum(str, Enum):
     INSTAGRAM = "instagram"  # 인스타그램
     YOUTUBE = "youtube"  # 유튜브
     FACEBOOK = "facebook"  # 페이스북
+    
+# 링크 아이템 스키마 추가
+class LinkItem(BaseModel):
+    """링크 정보"""
+    title: Optional[str] = ""
+    url: str
 
 # === 작품 스키마 ===
 class ArtworkCreate(BaseModel):
@@ -37,6 +43,12 @@ class ArtworkCreate(BaseModel):
     privacy: ArtworkPrivacyEnum = ArtworkPrivacyEnum.PUBLIC  # 공개 설정
     started_at: Optional[datetime] = None  # 작업 시작일
     estimated_completion: Optional[datetime] = None  # 예상 완성일
+    
+    # 새로 추가
+    links: Optional[List[LinkItem]] = []
+    youtube_urls: Optional[List[str]] = []
+    description_format: Optional[str] = "markdown"
+    
 
 class ArtworkUpdate(BaseModel):
     """작품 수정 스키마"""
@@ -51,6 +63,10 @@ class ArtworkUpdate(BaseModel):
     privacy: Optional[ArtworkPrivacyEnum] = None  # 공개 설정 수정
     completed_at: Optional[datetime] = None  # 완성일 설정
     estimated_completion: Optional[datetime] = None  # 예상 완성일 수정
+    
+    links: Optional[List[LinkItem]] = None
+    youtube_urls: Optional[List[str]] = None
+    description_format: Optional[str] = None
 
 class ArtistResponse(BaseModel):
     """아티스트 정보"""
@@ -106,6 +122,11 @@ class ArtworkDetailResponse(BaseModel):
     
       # 🎯 임시로 Optional 처리
     artist: Optional[ArtistResponse] = None
+    
+      # 기존 필드들...
+    links: Optional[List[LinkItem]] = []
+    youtube_urls: Optional[List[str]] = []
+    description_format: Optional[str] = "markdown"
     
     class Config:
         from_attributes = True
