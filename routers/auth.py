@@ -69,23 +69,34 @@ def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme)
 ) -> Optional[User]:
     """현재 로그인한 사용자 조회 (토큰 선택적)"""
+    print(f"credentials: {credentials}")  # 디버깅용
+    
     if not credentials:
+        print("No credentials provided")  # 디버깅용
         return None
     
     try:
         # AuthService 사용
         payload = AuthService.verify_token(credentials.credentials)
+        print(f"payload: {payload}")  # 디버깅용
+        
         if payload is None:
+            print("Token verification failed")  # 디버깅용
             return None
         
         email: str = payload.get("sub")
+        print(f"email from token: {email}")  # 디버깅용
+        
         if email is None:
             return None
         
         user = AuthService.get_user_by_email(db, email=email)
+        print(f"user found: {user.email if user else 'None'}")  # 디버깅용
         return user
-    except Exception:
+    except Exception as e:
+        print(f"Exception in get_current_user: {e}")  # 디버깅용
         return None
+        
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_create: UserCreate, db: Session = Depends(get_db)):
