@@ -85,6 +85,37 @@ async def get_blog_posts(
         "has_prev": page > 1 if page else skip > 0
     }
 
+@router.get("/{slug}/studio")
+async def get_studio_post(
+    slug: str,
+    db: Session = Depends(get_db)
+):
+    """특정 사용자의 STUDIO 포스트 조회"""
+    user = db.query(User).filter(User.slug == slug).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다"
+        )
+    
+    studio_post = db.query(BlogPost).filter(
+        BlogPost.user_id == user.id,
+        BlogPost.post_type == "STUDIO",
+        BlogPost.is_published == True
+    ).first()
+    
+    if not studio_post:
+        return None
+    
+    return {
+        "id": studio_post.id,
+        "title": studio_post.title,
+        "content": studio_post.content,
+        "featured_image": studio_post.featured_image,
+        "created_at": studio_post.created_at,
+        "updated_at": studio_post.updated_at
+    }
+
 @router.post("/posts", response_model=BlogPostResponse)
 async def create_blog_post(
     post: BlogPostCreate,
@@ -92,6 +123,19 @@ async def create_blog_post(
     db: Session = Depends(get_db)
 ):
     """새 블로그 포스트 생성"""
+    
+    # STUDIO 타입은 1개만 허용
+    if post.post_type == "STUDIO":
+        existing_studio = db.query(BlogPost).filter(
+            BlogPost.user_id == current_user.id,
+            BlogPost.post_type == "STUDIO"
+        ).first()
+        
+        if existing_studio:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="STUDIO 포스트는 1개만 작성할 수 있습니다. 기존 포스트를 수정해주세요."
+            )
     
     # 태그 처리 (리스트를 JSON 문자열로 변환)
     tags_json = None
@@ -160,12 +204,33 @@ async def update_blog_post(
     if post.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="권한이 없습니다")
     
+    # STUDIO 타입 변경 제한
+    if post.post_type == "STUDIO" and post_update.post_type and post_update.post_type != "STUDIO":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="STUDIO 포스트의 타입은 변경할 수 없습니다"
+        )
+    
+    # 다른 타입을 STUDIO로 변경 시도
+    if post.post_type != "STUDIO" and post_update.post_type == "STUDIO":
+        existing_studio = db.query(BlogPost).filter(
+            BlogPost.user_id == current_user.id,
+            BlogPost.post_type == "STUDIO",
+            BlogPost.id != post_id
+        ).first()
+        
+        if existing_studio:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 STUDIO 포스트가 존재합니다"
+            )
+    
     # 수정 가능한 필드만 업데이트
     update_data = post_update.dict(exclude_unset=True)
     
     # 태그 처리
     if 'tags' in update_data and update_data['tags'] is not None:
-        update_data['tags'] = json.dumps(update_data['tags'])
+        update_data['tags'] = json.dumps(update_data['tags'], ensure_ascii=False)
     
     for field, value in update_data.items():
         setattr(post, field, value)
@@ -189,6 +254,13 @@ async def delete_blog_post(
     
     if post.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="권한이 없습니다")
+    
+    # STUDIO 포스트는 삭제 불가 (선택사항)
+    if post.post_type == "STUDIO":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="STUDIO 포스트는 삭제할 수 없습니다. 내용을 수정해주세요."
+        )
     
     try:
         # S3 이미지 삭제

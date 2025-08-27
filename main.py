@@ -36,7 +36,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(artwork.router, prefix="/api/artworks", tags=["artworks"])
 app.include_router(history.router, prefix="/api/artworks", tags=["history"])
 app.include_router(upload.router, prefix="/api", tags=["upload"])
-app.include_router(profile.router, prefix="/api", tags=["profile"])
+app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 app.include_router(blog.router, tags=["blog"])
 
 # 루트 엔드포인트

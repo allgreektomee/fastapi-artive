@@ -58,6 +58,9 @@ class User(Base):
     email_notifications = Column(Boolean, default=True)
     marketing_emails = Column(Boolean, default=False)
     
+    #
+    artist_interview = Column(Text, nullable=True)
+    
     # 계정 상태
     is_verified = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)

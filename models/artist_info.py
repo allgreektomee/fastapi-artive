@@ -1,7 +1,8 @@
 # models/artist_info.py
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, JSON, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from datetime import datetime  # 이 줄 추가
 from .database import Base
 
 class ArtistStatement(Base):
@@ -92,8 +93,15 @@ class Exhibition(Base):
     title_en = Column(String(200), nullable=False)
     venue_ko = Column(String(200))
     venue_en = Column(String(200))
-    year = Column(String(10), nullable=False)
-    exhibition_type = Column(String(50), default="group")
+    
+    year = Column(String(4))  # 기존 필드 유지
+  # 새로 추가할 필드들
+    start_date = Column(Date)
+    end_date = Column(Date)
+    blog_post_url = Column(String(500))
+    
+    
+    exhibition_type = Column(String(50))  # solo, group, fair
     description_ko = Column(Text)
     description_en = Column(Text)
     
@@ -110,35 +118,26 @@ class Exhibition(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
-    user = relationship("User")
+    user = relationship("User", back_populates="exhibitions")
 
 class Award(Base):
     __tablename__ = "awards"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
-    # 기존 필드들
-    title_ko = Column(String(200), nullable=False)
-    title_en = Column(String(200), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title_ko = Column(String(200))
+    title_en = Column(String(200))
     organization_ko = Column(String(200))
     organization_en = Column(String(200))
-    year = Column(String(10), nullable=False)
-    award_type = Column(String(50), default="recognition")
+    year = Column(String(10))
+    award_type = Column(String(50))
     description_ko = Column(Text)
     description_en = Column(Text)
-    
-    # 추가 필드
-    image_url = Column(String(500))  # 수상 증서/사진
-    video_url = Column(String(500))  # 수상 관련 영상
-    
-    # 표시 설정
+    blog_post_url = Column(String(500))  # 이 줄 추가
     is_featured = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     order_index = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
     
-    # 메타 정보
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-    
-    user = relationship("User")
+    user = relationship("User", back_populates="awards")
