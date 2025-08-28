@@ -194,35 +194,6 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     
     return {"message": "이메일 인증이 완료되었습니다"}
 
-@router.post("/resend-verification")
-async def resend_verification(email: str, db: Session = Depends(get_db)):
-    """
-    이메일 인증 재발송 API
-    - 이메일 인증 토큰을 재발송합니다
-    """
-    user = AuthService.get_user_by_email(db, email)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="사용자를 찾을 수 없습니다"
-        )
-    
-    if user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 인증된 이메일입니다"
-        )
-    
-    # 새 인증 토큰 생성
-    verification_token = AuthService.create_verification_token(db, email)
-    
-    # TODO: 실제 이메일 발송 로직 추가
-    print(f"🔐 이메일 인증 토큰 재발송: {verification_token}")
-    print(f"📧 인증 링크: http://localhost:8000/auth/verify-email?token={verification_token}")
-    
-    return {"message": "인증 이메일이 재발송되었습니다"}
-
 @router.post("/check-slug")
 async def check_slug_availability(request: SlugCheckRequest, db: Session = Depends(get_db)):
     """
