@@ -491,3 +491,15 @@ async def resend_verification(data: dict, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"재발송 오류: {e}")
         return {"message": "재발송 요청이 처리되었습니다", "email_sent": False}
+    
+    
+@router.get("/check-email")
+async def check_email_availability(email: str, db: Session = Depends(get_db)):
+    """이메일 중복 확인 API"""
+    existing_user = AuthService.get_user_by_email(db, email)
+    
+    return {
+        "email": email,
+        "available": existing_user is None,
+        "message": "사용 가능한 이메일입니다" if existing_user is None else "이미 사용중인 이메일입니다"
+    }
