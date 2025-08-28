@@ -177,22 +177,207 @@ async def login(user_login: UserLogin, db: Session = Depends(get_db)):
         }
     }
 
-@router.get("/verify-email")
+@router.get("/verify-email", response_class=HTMLResponse)
 async def verify_email(token: str, db: Session = Depends(get_db)):
-    """
-    이메일 인증 API
-    - 이메일 인증 토큰을 검증합니다
-    - 사용자의 이메일 인증 상태를 활성화합니다
-    """
+    """이메일 인증 API"""
     success = AuthService.verify_email_token(db, token)
     
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="유효하지 않거나 만료된 인증 토큰입니다"
-        )
-    
-    return {"message": "이메일 인증이 완료되었습니다"}
+    if success:
+        return """
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Artive - 이메일 인증</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+                .container {
+                    background: white;
+                    border-radius: 20px;
+                    padding: 50px;
+                    max-width: 500px;
+                    width: 100%;
+                    text-align: center;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                }
+                .logo {
+                    font-size: 48px;
+                    font-weight: bold;
+                    margin-bottom: 30px;
+                    color: #333;
+                }
+                .success-icon {
+                    width: 80px;
+                    height: 80px;
+                    margin: 0 auto 30px;
+                    background: #48bb78;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .checkmark {
+                    color: white;
+                    font-size: 40px;
+                }
+                h1 {
+                    font-size: 28px;
+                    margin-bottom: 15px;
+                    color: #333;
+                }
+                p {
+                    font-size: 16px;
+                    color: #666;
+                    margin-bottom: 30px;
+                    line-height: 1.6;
+                }
+                .btn {
+                    display: inline-block;
+                    padding: 15px 40px;
+                    background: #000;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                }
+                .btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="logo">Artive</div>
+                <div class="success-icon">
+                    <span class="checkmark">✓</span>
+                </div>
+                <h1>이메일 인증 완료!</h1>
+                <p>
+                    이메일 인증이 성공적으로 완료되었습니다.<br>
+                    이제 Artive의 모든 기능을 사용할 수 있습니다.
+                </p>
+                <a href="https://www.artivefor.me/auth/login" class="btn">
+                    로그인 페이지로 이동
+                </a>
+            </div>
+        </body>
+        </html>
+        """
+    else:
+        return """
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Artive - 인증 실패</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+                .container {
+                    background: white;
+                    border-radius: 20px;
+                    padding: 50px;
+                    max-width: 500px;
+                    width: 100%;
+                    text-align: center;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                }
+                .logo {
+                    font-size: 48px;
+                    font-weight: bold;
+                    margin-bottom: 30px;
+                    color: #333;
+                }
+                .error-icon {
+                    width: 80px;
+                    height: 80px;
+                    margin: 0 auto 30px;
+                    background: #f56565;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .xmark {
+                    color: white;
+                    font-size: 40px;
+                }
+                h1 {
+                    font-size: 28px;
+                    margin-bottom: 15px;
+                    color: #333;
+                }
+                p {
+                    font-size: 16px;
+                    color: #666;
+                    margin-bottom: 30px;
+                    line-height: 1.6;
+                }
+                .btn {
+                    display: inline-block;
+                    padding: 15px 40px;
+                    background: #000;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                }
+                .btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="logo">Artive</div>
+                <div class="error-icon">
+                    <span class="xmark">✕</span>
+                </div>
+                <h1>인증 실패</h1>
+                <p>
+                    유효하지 않거나 만료된 인증 링크입니다.<br>
+                    로그인 페이지에서 인증 메일을 다시 요청해주세요.
+                </p>
+                <a href="https://www.artivefor.me/auth/login" class="btn">
+                    로그인 페이지로 이동
+                </a>
+            </div>
+        </body>
+        </html>
+        """
 
 @router.post("/check-slug")
 async def check_slug_availability(request: SlugCheckRequest, db: Session = Depends(get_db)):
