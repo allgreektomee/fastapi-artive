@@ -42,7 +42,7 @@ fastapi-mail==1.4.1
 apscheduler==3.10.4
 
 # Optional: Database Drivers
-# psycopg2-binary==2.9.9  # PostgreSQL 사용 시
+psycopg2-binary==2.9.9  # PostgreSQL 사용 시
 # pymysql==1.1.0  # MySQL 사용 시
 
 # Development Tools (Optional)
