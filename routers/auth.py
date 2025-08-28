@@ -458,3 +458,36 @@ async def delete_account(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"회원 탈퇴 처리 중 오류가 발생했습니다: {str(e)}"
         )
+        
+@router.post("/resend-verification")
+async def resend_verification(data: dict, db: Session = Depends(get_db)):
+    """이메일 인증 재발송"""
+    email = data.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="이메일을 입력해주세요")
+    
+    user = AuthService.get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+    
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="이미 인증된 이메일입니다")
+    
+    # 새 토큰 생성 및 발송
+    verification_token = AuthService.create_verification_token(db, email)
+    
+    try:
+        from services.email_service import EmailService
+        email_sent = await EmailService.send_verification_email(
+            email=user.email,
+            token=verification_token,
+            name=user.name
+        )
+        
+        return {
+            "message": "인증 메일이 재발송되었습니다" if email_sent else "재발송 요청이 처리되었습니다",
+            "email_sent": email_sent
+        }
+    except Exception as e:
+        print(f"재발송 오류: {e}")
+        return {"message": "재발송 요청이 처리되었습니다", "email_sent": False}
