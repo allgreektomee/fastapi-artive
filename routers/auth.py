@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from passlib.context import CryptContext  # 이 줄 추가!
 from datetime import datetime, timedelta
-
+from fastapi.responses import HTMLResponse
 # models import
 from models.database import get_db
 from models.user import User
