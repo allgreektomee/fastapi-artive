@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session,joinedload
 from typing import Optional
 
 from models.database import get_db
-from models.artwork import Artwork
+from models.artwork import Artwork, ArtworkHistory
 from models.user import User
+
+
 from schemas.artwork import (
     ArtworkCreate, ArtworkUpdate, ArtworkCardResponse, ArtworkDetailResponse,
     ArtworkFilter, PaginatedArtworksResponse, UserArtworkStats,
