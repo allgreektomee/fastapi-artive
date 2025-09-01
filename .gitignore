@@ -1,3 +1,7 @@
 .env
 node_modules/
 package*.json
+__pycache__/
+*.pyc
+*.pyo
+venv/
