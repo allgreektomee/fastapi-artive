@@ -173,25 +173,6 @@ async def delete_artwork(
             detail="작품 삭제 중 오류가 발생했습니다"
         )
 
-@router.post("/{artwork_id}/like")
-async def toggle_artwork_like(
-    artwork_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    작품 좋아요를 토글합니다
-    - 로그인한 사용자만 좋아요 가능
-    """
-    success = ArtworkService.toggle_like(db, artwork_id, current_user.id)
-    
-    if not success:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail="작품을 찾을 수 없습니다"
-        )
-    
-    return {"message": "좋아요가 반영되었습니다"}
 
 # === 공개 갤러리 조회 API ===
 @router.get("/user/{user_slug}", response_model=PaginatedArtworksResponse)
@@ -241,27 +222,3 @@ async def get_user_gallery_artworks(
     # 로그인하지 않은 사용자는 viewer_id를 None으로 처리
     return ArtworkService.get_user_artworks(db, user.id, filters, None)
 
-@router.get("/user/{user_slug}/stats", response_model=UserArtworkStats)
-async def get_user_gallery_stats(
-    user_slug: str,
-    db: Session = Depends(get_db)
-):
-    """
-    특정 사용자의 공개 갤러리 통계를 조회합니다
-    """
-    from services.auth_service import AuthService
-    
-    user = AuthService.get_user_by_slug(db, user_slug)
-    if not user:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail="사용자를 찾을 수 없습니다"
-        )
-    
-    if not user.is_public_gallery:
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="비공개 갤러리입니다"
-        )
-    
-    return ArtworkService.get_user_artwork_stats(db, user.id)

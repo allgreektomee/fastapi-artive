@@ -5,7 +5,7 @@ from typing import List
 
 from models.database import get_db
 from models.user import User
-from models.artwork import ArtworkHistory
+from models.artwork import Artwork, ArtworkHistory  # ← Artwork 추가
 from schemas.artwork import ArtworkHistoryCreate, ArtworkHistoryResponse
 from routers.auth import get_current_user
 from services.history_service import HistoryService
@@ -73,10 +73,11 @@ async def delete_history(
         if history.thumbnail_url:
             images_to_delete.append(history.thumbnail_url)
         
-        # 히스토리의 추가 이미지들
-        for img in history.images:
-            if img.image_url:
-                images_to_delete.append(img.image_url)
+        # 히스토리의 추가 이미지들 (images 관계가 있는 경우)
+        if hasattr(history, 'images'):
+            for img in history.images:
+                if img.image_url:
+                    images_to_delete.append(img.image_url)
         
         # S3 파일 삭제
         for img_url in images_to_delete:

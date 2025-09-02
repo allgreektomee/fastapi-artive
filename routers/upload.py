@@ -317,10 +317,9 @@ async def upload_blog_image(
     db: Session = Depends(get_db)
 ):
     """
-    블로그 에디터용 이미지 업로드 (간단한 버전)
+    블로그 에디터용 이미지 업로드 (리사이징 적용)
     """
     
-    # AWS 자격 증명 확인
     if not AWS_ACCESS_KEY or not AWS_SECRET_KEY:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -328,21 +327,18 @@ async def upload_blog_image(
         )
     
     try:
-        # 파일 유효성 검사
         if not file.filename:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="파일명이 없습니다"
             )
         
-        # 이미지 파일인지 확인
         if not validate_image_file(file):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="지원하지 않는 파일 형식입니다"
             )
         
-        # 파일 크기 확인 (10MB 제한)
         file_content = await file.read()
         file_size = len(file_content)
         
@@ -352,48 +348,53 @@ async def upload_blog_image(
                 detail="파일 크기는 10MB 이하여야 합니다"
             )
         
-        # 고유한 파일명 생성 - slug 사용
-        s3_key = generate_unique_filename(file.filename, current_user.slug)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = str(uuid.uuid4())[:8]
+        base_name = f"{timestamp}_{unique_id}"
         
-        # S3에 업로드
+        # 디스플레이용 (1200px)
+        display_content = resize_image(file_content, 1200, quality=85)
+        display_key = f"blog/{current_user.slug}/display/{base_name}.jpg"
+        
+        # 썸네일용 (400px)
+        thumb_content = resize_image(file_content, 400, quality=80)
+        thumb_key = f"blog/{current_user.slug}/thumb/{base_name}.jpg"
+        
+        # S3 업로드
         s3_client.put_object(
             Bucket=S3_BUCKET,
-            Key=s3_key,
-            Body=file_content,
-            ContentType=file.content_type or 'image/jpeg',
+            Key=display_key,
+            Body=display_content,
+            ContentType='image/jpeg',
             ContentDisposition=f'inline; filename="{file.filename}"',
             CacheControl='max-age=31536000'
         )
         
-        # URL 생성
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=thumb_key,
+            Body=thumb_content,
+            ContentType='image/jpeg',
+            ContentDisposition=f'inline; filename="{file.filename}"',
+            CacheControl='max-age=31536000'
+        )
+        
         cdn_domain = os.getenv("CLOUDFRONT_DOMAIN", "")
         if cdn_domain:
-            file_url = f"https://{cdn_domain}/{s3_key}"
+            display_url = f"https://{cdn_domain}/{display_key}"
+            thumb_url = f"https://{cdn_domain}/{thumb_key}"
         else:
-            file_url = f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{s3_key}"
+            display_url = f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{display_key}"
+            thumb_url = f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{thumb_key}"
         
-        # 프론트엔드가 기대하는 형식으로 반환
         return {
-            "url": file_url,  # 프론트엔드에서 url 필드를 사용하는 경우
-            "file_url": file_url,  # 또는 file_url 필드를 사용하는 경우
+            "url": display_url,
+            "file_url": display_url,
+            "display_url": display_url,
+            "thumbnail_url": thumb_url,
             "success": True
         }
         
-    except ClientError as e:
-        error_code = e.response['Error']['Code'] if e.response else 'Unknown'
-        print(f"S3 업로드 오류 - Code: {error_code}, Message: {e}")
-        
-        if error_code == 'InvalidAccessKeyId':
-            detail = "잘못된 AWS Access Key입니다"
-        elif error_code == 'SignatureDoesNotMatch':
-            detail = "잘못된 AWS Secret Key입니다"
-        else:
-            detail = f"S3 업로드 실패: {error_code}"
-            
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=detail
-        )
     except Exception as e:
         print(f"업로드 처리 오류: {e}")
         import traceback
