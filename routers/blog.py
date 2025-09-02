@@ -23,6 +23,7 @@ async def get_blog_posts(
     user: Optional[str] = None,  
     user_id: Optional[int] = None,  
     search: Optional[str] = None,  
+    full_content: Optional[bool] = False,  # 추가: 전체 내용 필요 여부
     db: Session = Depends(get_db)
 ):
     """블로그 포스트 목록 조회"""
@@ -68,12 +69,22 @@ async def get_blog_posts(
     # 전체 개수 (페이지네이션용)
     total = query.count()
     
-    # 정렬 및 조회
+ # 정렬 및 조회
     posts = query.order_by(
-        BlogPost.is_pinned.desc(),  # 핀 고정 먼저
-        BlogPost.created_at.desc()   # 최신순
+        BlogPost.is_pinned.desc(),
+        BlogPost.created_at.desc()
     ).offset(skip).limit(limit).all()
     
+    if not full_content:
+        for post in posts:
+            # content를 짧게 자르기 (HTML 태그 제거하고 200자만)
+            import re
+            plain_text = re.sub('<[^<]+?>', '', post.content)
+            if len(plain_text) > 200:
+                post.excerpt = plain_text[:200] + "..."
+            # content 필드를 비우거나 짧게
+            post.content = ""  # 또는 post.content[:500]
+            
     # 응답 형식
     return {
         "posts": posts,
