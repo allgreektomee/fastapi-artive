@@ -83,3 +83,5 @@ class User(Base):
     artist_qa = relationship("ArtistQA", back_populates="user")
     exhibitions = relationship("Exhibition", back_populates="user")
     awards = relationship("Award", back_populates="user")
+    
+    refresh_tokens = relationship("RefreshToken", back_populates="user")

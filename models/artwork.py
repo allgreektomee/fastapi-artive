@@ -26,6 +26,7 @@ class Artwork(Base):
     description = Column(Text)  # 작품 설명
     
     artist_name = Column(String(100))  # 추가!
+    
 
      # 새로 추가할 필드들
     links = Column(JSON, nullable=True)  # 링크 목록 [{title: "", url: ""}]

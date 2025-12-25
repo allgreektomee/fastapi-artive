@@ -161,13 +161,15 @@ async def login(user_login: UserLogin, db: Session = Depends(get_db)):
     
     # JWT 토큰 생성
     access_token = AuthService.create_access_token(data={"sub": user.email})
-    
+    refresh_token = AuthService.create_refresh_token(db, user.id)
+      
     # 마지막 로그인 시간 업데이트
     user.last_login = datetime.utcnow()
     db.commit()
     
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": {
             "id": user.id,
@@ -658,4 +660,32 @@ async def check_email_availability(email: str, db: Session = Depends(get_db)):
         "email": email,
         "available": existing_user is None,
         "message": "사용 가능한 이메일입니다" if existing_user is None else "이미 사용중인 이메일입니다"
+    }
+    
+@router.post("/refresh")
+async def refresh_token(data: dict, db: Session = Depends(get_db)):
+    """토큰 갱신 API"""
+    refresh_token = data.get("refresh_token")
+    
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Refresh token이 필요합니다"
+        )
+    
+    user = AuthService.verify_refresh_token(db, refresh_token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 refresh token입니다"
+        )
+    
+    # 새 토큰들 생성-
+    new_access_token = AuthService.create_access_token(data={"sub": user.email})
+    new_refresh_token = AuthService.create_refresh_token(db, user.id)
+    
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer"
     }
