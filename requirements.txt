@@ -8,7 +8,7 @@ sqlalchemy==2.0.23
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4  # ✅ 주석 해제 - 비밀번호 해싱에 필요
-# bcrypt==4.1.2  # ❌ 이 라인은 주석 처리 유지 (passlib[bcrypt]와 충돌)
+bcrypt==4.0.1  # ❌ 이 라인은 주석 처리 유지 (passlib[bcrypt]와 충돌)
 
 # Email Validation (schemas/user.py에서 EmailStr 사용)
 email-validator==2.1.0

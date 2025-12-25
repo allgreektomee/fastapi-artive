@@ -1,16 +1,27 @@
 # services/auth_service.py
+
+import bcrypt
+
+# Passlib의 버그를 해결하기 위한 패치
+if not hasattr(bcrypt, "__about__"):
+    bcrypt.__about__ = type('About', (object,), {'__version__': bcrypt.__version__})
+
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+
 import secrets
 import uuid
 
 from models.user import User
 from models.email_verification import EmailVerificationToken
 from schemas.user import UserCreate
+from models.refresh_token import RefreshToken
 
 # 비밀번호 해싱 설정
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -19,7 +30,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = "your-secret-key-here-change-in-production"  # 운영환경에서는 환경변수로 변경
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440
-
+    
+#token
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 class AuthService:
     """인증 관련 비즈니스 로직을 담당하는 서비스 클래스"""
     
@@ -198,3 +212,42 @@ class AuthService:
             counter += 1
         
         return slug
+
+
+    @staticmethod
+    def create_refresh_token(db: Session, user_id: int) -> str:
+        """Refresh Token 생성"""
+        import secrets
+        token = secrets.token_urlsafe(64)
+        expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        
+        # 기존 토큰들 무효화
+        db.query(RefreshToken).filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.is_revoked == False
+        ).update({"is_revoked": True})
+        
+        # 새 토큰 생성
+        refresh_token = RefreshToken(
+            token=token,
+            user_id=user_id,
+            expires_at=expires_at
+        )
+        db.add(refresh_token)
+        db.commit()
+        
+        return token
+
+    @staticmethod
+    def verify_refresh_token(db: Session, token: str) -> Optional[User]:
+        """Refresh Token 검증"""
+        refresh_token = db.query(RefreshToken).filter(
+            RefreshToken.token == token,
+            RefreshToken.is_revoked == False,
+            RefreshToken.expires_at > datetime.utcnow()
+        ).first()
+        
+        if not refresh_token:
+            return None
+        
+        return refresh_token.user
